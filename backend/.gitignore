@@ -22,3 +22,13 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Scripts chứa thông tin nhạy cảm hoặc chỉ dùng nội bộ
+run_sql.py
+check_db.py
+check_db2.py
+check_order.py
+delete_corrupted.py
+dump.py
+test_order.py
+update_pwd.py
