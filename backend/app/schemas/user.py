@@ -8,7 +8,7 @@ class UserCreate(UserBase):
     password: str
 
 class UserResponse(UserBase):
-    id: int
+    user_id: int
 
     class Config:
         from_attributes = True

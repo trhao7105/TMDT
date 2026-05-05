@@ -1,0 +1,24 @@
+{
+  "name": "ilocker-db",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "db:test": "node scripts/test-connection.js",
+    "db:schema": "node scripts/run-sql.js sql/01_schema.sql",
+    "db:seed": "node scripts/run-sql.js sql/02_seed.sql",
+    "db:functions": "node scripts/run-sql.js sql/03_functions.sql",
+    "db:triggers": "node scripts/run-sql.js sql/04_triggers.sql",
+    "db:reset": "node scripts/run-sql.js sql/99_reset.sql",
+    "db:setup": "npm run db:schema && npm run db:functions && npm run db:triggers && npm run db:seed"
+  },
+
+
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.20.0"
+  }
+}

@@ -2,7 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from ..models.user import User
+from ..models.all_models import Users
 from ..schemas.user import UserCreate, UserLogin, UserResponse, Token
 from ..services import security, email
 from ..database import get_db
@@ -14,7 +14,7 @@ router = APIRouter(
 
 @router.post("/signup", response_model=UserResponse)
 def signup(user: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
+    db_user = db.query(Users).filter(Users.email == user.email).first()
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -22,10 +22,12 @@ def signup(user: UserCreate, background_tasks: BackgroundTasks, db: Session = De
         )
     
     hashed_password = security.get_password_hash(user.password)
-    new_user = User(
+    new_user = Users(
         email=user.email,
         full_name=user.full_name,
-        hashed_password=hashed_password
+        password_hash=hashed_password,
+        role_id=1,
+        status='inactive'
     )
     db.add(new_user)
     db.commit()
@@ -38,15 +40,15 @@ def signup(user: UserCreate, background_tasks: BackgroundTasks, db: Session = De
 
 @router.post("/login", response_model=Token)
 def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == user_credentials.email).first()
+    user = db.query(Users).filter(Users.email == user_credentials.email).first()
     
-    if not user or not security.verify_password(user_credentials.password, user.hashed_password):
+    if not user or not security.verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
         
-    if not user.is_verified:
+    if user.status != 'active':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email của bạn.",
@@ -68,17 +70,17 @@ def verify_email(token: str, db: Session = Depends(get_db)):
             detail="Mã xác thực không hợp lệ hoặc đã hết hạn",
         )
     
-    user = db.query(User).filter(User.email == email_address).first()
+    user = db.query(Users).filter(Users.email == email_address).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Không tìm thấy tài khoản để xác thực",
         )
         
-    if user.is_verified:
+    if user.status == 'active':
         return RedirectResponse(url="http://localhost:5173/login?verified=already")
         
-    user.is_verified = True
+    user.status = 'active'
     db.commit()
     
     return RedirectResponse(url="http://localhost:5173/login?verified=true")

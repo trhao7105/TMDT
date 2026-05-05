@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import api from "../../api/axios";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
@@ -67,94 +68,33 @@ export function ServicesPage() {
     setBooking(JSON.parse(savedBooking));
   }, [navigate]);
 
-  const durationOptions: DurationOption[] = [
-    { id: "duration-0", label: "≤ 1 tháng", value: 1, multiplier: 1.0 },
-    { id: "duration-1", label: "1 tháng", value: 1, multiplier: 1.2, popular: true },
-    { id: "duration-2", label: "2 tháng", value: 2, multiplier: 2.0 },
-    { id: "duration-3", label: "3 tháng", value: 3, multiplier: 2.9 },
-    { id: "duration-6", label: "6 tháng", value: 6, multiplier: 5.5 },
-    { id: "duration-12", label: "1+ năm", value: 12, multiplier: 10.0 },
-  ];
+  const [durationOptions, setDurationOptions] = useState<DurationOption[]>([]);
+  const [protectionPlans, setProtectionPlans] = useState<ProtectionPlan[]>([]);
+  const [additionalServices, setAdditionalServices] = useState<AdditionalService[]>([]);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
-  const protectionPlans: ProtectionPlan[] = [
-    {
-      id: "protection-basic",
-      name: "Basic",
-      price: 0,
-      features: [
-        "Bảo hiểm cơ bản",
-        "Bồi thường tối đa 1 triệu",
-        "Camera giám sát 24/7",
-      ],
-    },
-    {
-      id: "protection-silver",
-      name: "Silver",
-      price: 50000,
-      popular: true,
-      features: [
-        "Bảo hiểm nâng cao",
-        "Bồi thường tối đa 5 triệu",
-        "Camera + cảm biến chuyển động",
-        "Hỗ trợ khẩn cấp 24/7",
-      ],
-    },
-    {
-      id: "protection-gold",
-      name: "Gold",
-      price: 100000,
-      features: [
-        "Bảo hiểm toàn diện",
-        "Bồi thường tối đa 10 triệu",
-        "Camera + cảm biến + báo động",
-        "Hỗ trợ ưu tiên",
-        "Kiểm tra định kỳ",
-      ],
-    },
-    {
-      id: "protection-plus",
-      name: "Plus",
-      price: 200000,
-      features: [
-        "Bảo hiểm cao cấp",
-        "Bồi thường tối đa 20 triệu",
-        "Hệ thống bảo mật đa lớp",
-        "Hỗ trợ VIP 24/7",
-        "Kiểm tra hàng tuần",
-        "Chống cháy nổ",
-      ],
-    },
-  ];
-
-  const additionalServices: AdditionalService[] = [
-    {
-      id: "service-transport",
-      name: "Vận chuyển",
-      description: "Dịch vụ vận chuyển tận nơi",
-      basePrice: 500000,
-      unit: "chuyến",
-      requiresInput: true,
-      inputLabel: "Khoảng cách (km)",
-      inputUnit: "10.000đ/km",
-    },
-    {
-      id: "service-loading",
-      name: "Bốc xếp",
-      description: "Hỗ trợ bốc xếp hàng hóa",
-      basePrice: 100000,
-      unit: "chuyến",
-    },
-    {
-      id: "service-packing",
-      name: "Đóng gói",
-      description: "Miễn phí <10 thùng, sau đó 5.000đ/thùng",
-      basePrice: 5000,
-      unit: "thùng",
-      requiresInput: true,
-      inputLabel: "Số thùng cần đóng",
-      inputUnit: "thùng",
-    },
-  ];
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const response = await api.get('/services/options');
+        setDurationOptions(response.data.durationOptions);
+        setProtectionPlans(response.data.protectionPlans);
+        setAdditionalServices(response.data.additionalServices);
+        
+        if (response.data.durationOptions.length > 0) {
+          setSelectedDuration(response.data.durationOptions[0].id);
+        }
+        if (response.data.protectionPlans.length > 0) {
+          setSelectedProtection(response.data.protectionPlans[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch options", error);
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    };
+    fetchOptions();
+  }, []);
 
   const calculatePrice = () => {
     if (!booking) return { storagePrice: 0, protectionPrice: 0, servicesPrice: 0, totalPrice: 0 };
@@ -172,10 +112,10 @@ export function ServicesPage() {
     selectedServices.forEach((serviceId) => {
       const service = additionalServices.find((s) => s.id === serviceId);
       if (service) {
-        if (serviceId === "service-transport") {
+        if (service.requiresInput && service.inputLabel === "Khoảng cách (km)") {
           const km = serviceInputs[serviceId] || 0;
           servicesPrice += service.basePrice + km * 10000;
-        } else if (serviceId === "service-packing") {
+        } else if (service.requiresInput && service.inputLabel === "Số lượng") {
           const boxes = serviceInputs[serviceId] || 0;
           if (boxes > 10) {
             servicesPrice += (boxes - 10) * service.basePrice;
@@ -248,7 +188,13 @@ export function ServicesPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+          {isLoadingOptions ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              Đang tải các gói dịch vụ...
+            </div>
+          ) : (
+            <>
+              <div className="lg:col-span-2 space-y-8">
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-6">
                 <Clock className="h-5 w-5 text-primary" />
@@ -480,6 +426,8 @@ export function ServicesPage() {
               </div>
             </Card>
           </div>
+          </>
+          )}
         </div>
       </div>
 

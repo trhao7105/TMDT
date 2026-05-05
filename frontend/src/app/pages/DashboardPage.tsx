@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
+import api from "../../api/axios";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
@@ -33,8 +34,16 @@ export function DashboardPage() {
     const email = localStorage.getItem("userEmail") || "";
     setUserName(name || email.split("@")[0]);
 
-    const bookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
-    setUserBookings(bookings);
+    const fetchBookings = async () => {
+      try {
+        const response = await api.get('/orders/my-orders');
+        setUserBookings(response.data);
+      } catch (error) {
+        console.error("Failed to fetch user bookings", error);
+      }
+    };
+    
+    fetchBookings();
   }, [navigate]);
 
   const activeBookings = userBookings.filter((b) => b.status === "confirmed");

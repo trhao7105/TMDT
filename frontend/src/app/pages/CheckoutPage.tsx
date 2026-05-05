@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import api from "../../api/axios";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
@@ -54,31 +55,30 @@ export function CheckoutPage() {
 
     setIsProcessing(true);
 
-    setTimeout(() => {
-      const bookingId = "BK" + Date.now();
-      const completedBooking = {
-        ...booking,
-        id: bookingId,
-        customerInfo: formData,
-        paymentMethod,
-        status: "confirmed",
-        createdAt: new Date().toISOString(),
-        finalTotal: booking.pricing.totalPrice,
+    try {
+      const payload = {
+        storage_id: booking.storage.id,
+        service_type: booking.serviceType || 'package',
+        duration_id: booking.duration?.id || 'duration-1',
+        protection_plan_id: booking.protectionPlan?.id || 'protection-basic',
+        additional_services: booking.additionalServices || [],
+        total_price: booking.pricing.totalPrice
       };
 
-      const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
-      existingBookings.push(completedBooking);
-      localStorage.setItem("userBookings", JSON.stringify(existingBookings));
-
-      localStorage.removeItem("booking");
-
+      const response = await api.post('/orders/checkout', payload);
+      
       setIsProcessing(false);
+      localStorage.removeItem("booking");
       toast.success("Đặt kho thành công!");
-
+      
       setTimeout(() => {
         navigate("/dashboard");
       }, 1000);
-    }, 2000);
+    } catch (error) {
+      setIsProcessing(false);
+      toast.error("Có lỗi xảy ra khi thanh toán");
+      console.error(error);
+    }
   };
 
   const handleBack = () => {

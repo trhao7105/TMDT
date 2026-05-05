@@ -71,15 +71,18 @@ uvicorn app.main:app --reload
 
 ## 📂 Cấu trúc dự án
 
-```text
 TMDT/
 ├── backend/               # Code Backend (FastAPI - Python)
 │   ├── app/               # Thư mục chứa logic chính (main.py, models, routers, services v.v.)
 │   ├── .env               # File chứa biến môi trường Database/JWT (không push lên Git)
 │   ├── venv/              # Môi trường ảo (không push lên Git)
 │   └── requirements.txt   # File cấu hình chứa danh sách thư viện Python
-└── frontend/              # Code Frontend (React TSX + Vite + Tailwind v4 + Shadcn)
-    ├── src/               # Thư mục gốc chứa toàn bộ components, pages, api.
-    ├── package.json       # File cấu hình thư viện Node.js
-    └── vite.config.ts     # Cấu hình Vite TypeScript
+├── frontend/              # Code Frontend (React TSX + Vite + Tailwind v4 + Shadcn)
+│   ├── src/               # Thư mục gốc chứa toàn bộ components, pages, api.
+│   ├── package.json       # File cấu hình thư viện Node.js
+│   └── vite.config.ts     # Cấu hình Vite TypeScript
+└── database/              # Code Database (PostgreSQL - Neon, Node.js scripts)
+    ├── sql/               # Các file SQL schema, seed, functions, triggers
+    ├── scripts/           # Các script tự động hoá bằng Node.js
+    └── package.json       # File cấu hình NPM cho database
 ```

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import api from "../../api/axios";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
@@ -23,195 +24,24 @@ export function StorageSelectionPage() {
   const [serviceType, setServiceType] = useState<"package" | "self">("package");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  const packageStorages: StorageSize[] = [
-    {
-      id: "pkg-xxs",
-      name: "XXS",
-      dimension: "2m³",
-      description: "Phù hợp cho đồ cá nhân, hồ sơ, quần áo theo mùa",
-      price: 495000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-xs",
-      name: "XS",
-      dimension: "3m³",
-      description: "Tủ quần áo, hộp đựng đồ, dụng cụ thể thao",
-      price: 695000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-s",
-      name: "S",
-      dimension: "5m³",
-      description: "Đồ đạc phòng ngủ, xe đạp, đồ dùng văn phòng",
-      price: 1195000,
-      popular: true,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-m",
-      name: "M",
-      dimension: "8m³",
-      description: "Nội thất phòng 1-2 người, hàng kinh doanh",
-      price: 1845000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-l",
-      name: "L",
-      dimension: "12m³",
-      description: "Nội thất căn hộ, hàng hóa kinh doanh",
-      price: 2495000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-xl",
-      name: "XL",
-      dimension: "18m³",
-      description: "Toàn bộ nội thất nhà, kho hàng doanh nghiệp",
-      price: 3495000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-    {
-      id: "pkg-xxl",
-      name: "XXL",
-      dimension: "25m³",
-      description: "Kho hàng lớn, toàn bộ tài sản gia đình",
-      price: 5195000,
-      features: [
-        "Đóng gói & vận chuyển chuyên nghiệp",
-        "Lưu trữ trong kho hiện đại",
-        "Giao trả hàng hóa theo nhu cầu",
-        "Kiểm soát nhiệt độ & độ ẩm",
-      ],
-    },
-  ];
+  const [packageStorages, setPackageStorages] = useState<StorageSize[]>([]);
+  const [selfStorages, setSelfStorages] = useState<StorageSize[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const selfStorages: StorageSize[] = [
-    {
-      id: "self-1",
-      name: "6 thùng",
-      dimension: "1m³",
-      description: "Tài liệu, sách vở, đồ dùng cá nhân nhỏ gọn",
-      price: 395000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-2",
-      name: "12 thùng",
-      dimension: "2m³",
-      description: "Quần áo, giày dép, đồ dùng sinh hoạt",
-      price: 795000,
-      popular: true,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-3",
-      name: "18 thùng",
-      dimension: "3m³",
-      description: "Đồ đạc phòng ngủ, thiết bị điện tử",
-      price: 1195000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-4",
-      name: "8-10 box",
-      dimension: "4m³",
-      description: "Nội thất, thiết bị văn phòng, hàng kinh doanh",
-      price: 1445000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-5",
-      name: "Xe và 2 box",
-      dimension: "5m³",
-      description: "Xe máy, xe đạp kèm đồ dùng cá nhân",
-      price: 2495000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-6",
-      name: "Nội thất nhỏ",
-      dimension: "6m³",
-      description: "Nội thất phòng khách, bàn ghế, tủ kệ",
-      price: 2695000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-    {
-      id: "self-7",
-      name: "Đồ studio",
-      dimension: "9m³",
-      description: "Toàn bộ nội thất studio, phòng làm việc",
-      price: 3195000,
-      features: [
-        "Truy cập vào kho 24/7",
-        "Tủ đựng đồ riêng biệt",
-        "Được bảo vệ chuyên nghiệp",
-        "Hàng hóa khách tự mang đến",
-      ],
-    },
-  ];
+  useEffect(() => {
+    const fetchSizes = async () => {
+      try {
+        const response = await api.get('/services/sizes');
+        setPackageStorages(response.data.packageStorages);
+        setSelfStorages(response.data.selfStorages);
+      } catch (error) {
+        console.error("Failed to fetch storage sizes", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSizes();
+  }, []);
 
   const handleContinue = () => {
     if (selectedSize) {
@@ -251,9 +81,13 @@ export function StorageSelectionPage() {
             setServiceType(v as "package" | "self");
             setSelectedSize(null);
           }}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="package">Thuê kho lưu trữ trọn gói</TabsTrigger>
-              <TabsTrigger value="self">Thuê kho tự quản</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-auto p-1 bg-muted/60">
+              <TabsTrigger value="package" className="py-3 text-sm md:text-base whitespace-normal text-center h-full">
+                Thuê kho lưu trữ trọn gói
+              </TabsTrigger>
+              <TabsTrigger value="self" className="py-3 text-sm md:text-base whitespace-normal text-center h-full">
+                Thuê kho tự quản
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="package" className="mt-8">
@@ -326,61 +160,67 @@ export function StorageSelectionPage() {
           </Tabs>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-          {currentStorages.map((storage) => (
-            <Card
-              key={storage.id}
-              className={`relative p-6 cursor-pointer transition-all hover:shadow-lg ${
-                selectedSize === storage.id
-                  ? "border-2 border-primary shadow-lg"
-                  : "border hover:border-primary/50"
-              }`}
-              onClick={() => setSelectedSize(storage.id)}
-            >
-              {storage.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                  Phổ biến nhất
-                </Badge>
-              )}
-
-              <div className="text-center mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
-                  <Package className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="mb-1 text-xl text-foreground">{storage.name}</h3>
-                <div className="text-2xl text-primary mb-1">{storage.dimension}</div>
-              </div>
-
-              <p className="text-sm text-muted-foreground text-center mb-4 min-h-[40px]">
-                {storage.description}
-              </p>
-
-              <div className="space-y-2 mb-4">
-                {storage.features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-2 text-sm">
-                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">{feature}</span>
+        <div className="flex flex-wrap justify-center gap-6 mb-8">
+          {isLoading ? (
+            <div className="w-full text-center py-12 text-muted-foreground">
+              Đang tải danh sách kho...
+            </div>
+          ) : (
+            currentStorages.map((storage) => (
+              <Card
+                key={storage.id}
+                className={`relative p-6 cursor-pointer transition-all hover:shadow-lg w-full max-w-[320px] flex-1 min-w-[280px] ${
+                  selectedSize === storage.id
+                    ? "border-2 border-primary shadow-lg"
+                    : "border hover:border-primary/50"
+                }`}
+                onClick={() => setSelectedSize(storage.id)}
+              >
+                {storage.popular && (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
+                    Phổ biến nhất
+                  </Badge>
+                )}
+  
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
+                    <Package className="h-8 w-8 text-primary" />
                   </div>
-                ))}
-              </div>
-
-              <div className="border-t pt-4 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Từ</div>
-                <div className="text-2xl text-foreground mb-1">
-                  {storage.price.toLocaleString("vi-VN")}đ
+                  <h3 className="mb-1 text-xl text-foreground">{storage.name}</h3>
+                  <div className="text-2xl text-primary mb-1">{storage.dimension}</div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  cho ≤ 1 tháng
+  
+                <p className="text-sm text-muted-foreground text-center mb-4 min-h-[40px]">
+                  {storage.description}
+                </p>
+  
+                <div className="space-y-2 mb-4">
+                  {storage.features.map((feature, index) => (
+                    <div key={index} className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-muted-foreground">{feature}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              {selectedSize === storage.id && (
-                <div className="absolute top-4 right-4 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                  <Check className="h-4 w-4 text-white" />
+  
+                <div className="border-t pt-4 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Từ</div>
+                  <div className="text-2xl text-foreground mb-1">
+                    {storage.price.toLocaleString("vi-VN")}đ
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    cho ≤ 1 tháng
+                  </div>
                 </div>
-              )}
-            </Card>
-          ))}
+  
+                {selectedSize === storage.id && (
+                  <div className="absolute top-4 right-4 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                )}
+              </Card>
+            ))
+          )}
         </div>
 
         <div className="max-w-4xl mx-auto mb-8">
