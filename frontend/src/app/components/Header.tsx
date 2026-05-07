@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router";
 import { Button } from "./ui/button";
 import { Lock, Menu, User } from "lucide-react";
 import { useState } from "react";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 export function Header() {
   const location = useLocation();
@@ -44,11 +45,20 @@ export function Header() {
           >
             Dịch vụ
           </Link>
+          <Link
+            to="/support"
+            className={`text-sm transition-colors hover:text-primary ${
+              location.pathname === "/support" ? "text-primary" : "text-foreground"
+            }`}
+          >
+            Hỗ trợ
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
           {isLoggedIn ? (
             <>
+              <NotificationsDropdown />
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/dashboard">
                   <User className="h-4 w-4 mr-2" />
@@ -111,6 +121,13 @@ export function Header() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Dịch vụ
+            </Link>
+            <Link
+              to="/support"
+              className="text-sm text-foreground hover:text-primary"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Hỗ trợ
             </Link>
             {!isLoggedIn && (
               <Link

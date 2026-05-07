@@ -16,7 +16,33 @@ import {
   QrCode,
   FileText,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
+
+function getRemainingTime(endTime: string | null): {
+  label: string;
+  daysLeft: number;
+  percent: number;
+  urgent: boolean;
+  warning: boolean;
+} | null {
+  if (!endTime) return null;
+  const now = new Date();
+  const end = new Date(endTime);
+  const diffMs = end.getTime() - now.getTime();
+  if (diffMs <= 0) return { label: "Đã hết hạn", daysLeft: 0, percent: 100, urgent: true, warning: false };
+  const daysLeft = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hoursLeft = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const label = daysLeft > 0 ? `${daysLeft} ngày ${hoursLeft} giờ` : `${hoursLeft} giờ`;
+  // percent elapsed (capped 0-100)
+  return {
+    label,
+    daysLeft,
+    percent: Math.min(100, Math.max(0, 100 - (diffMs / (30 * 24 * 60 * 60 * 1000)) * 100)),
+    urgent: daysLeft <= 3,
+    warning: daysLeft > 3 && daysLeft <= 7,
+  };
+}
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -48,6 +74,15 @@ export function DashboardPage() {
 
   const activeBookings = userBookings.filter((b) => b.status === "confirmed");
   const totalSpent = userBookings.reduce((sum, b) => sum + (b.finalTotal || 0), 0);
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "confirmed": return { text: "Đang hoạt động", className: "bg-green-500" };
+      case "expired":   return { text: "Đã hết hạn",     className: "bg-gray-400" };
+      case "cancelled": return { text: "Đã huỷ",         className: "bg-red-400" };
+      default:          return { text: "Đang xử lý",     className: "bg-yellow-500" };
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -129,7 +164,9 @@ export function DashboardPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {activeBookings.map((booking) => (
+                {activeBookings.map((booking) => {
+                  const remaining = getRemainingTime(booking.endTime);
+                  return (
                   <Card key={booking.id} className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -162,6 +199,48 @@ export function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Remaining time section */}
+                    {remaining && (
+                      <div className={`rounded-lg p-3 mb-4 ${
+                        remaining.urgent
+                          ? "bg-red-50 border border-red-200"
+                          : remaining.warning
+                          ? "bg-yellow-50 border border-yellow-200"
+                          : "bg-green-50 border border-green-200"
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {remaining.urgent && (
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className={`text-sm font-semibold ${
+                              remaining.urgent ? "text-red-600"
+                              : remaining.warning ? "text-yellow-700"
+                              : "text-green-700"
+                            }`}>
+                              ⏳ Còn lại: {remaining.label}
+                            </span>
+                          </div>
+                          {booking.endTime && (
+                            <span className="text-xs text-muted-foreground">
+                              HH: {new Date(booking.endTime).toLocaleDateString("vi-VN")}
+                            </span>
+                          )}
+                        </div>
+                        {/* Progress bar */}
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              remaining.urgent ? "bg-red-500"
+                              : remaining.warning ? "bg-yellow-400"
+                              : "bg-green-500"
+                            }`}
+                            style={{ width: `${remaining.percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="border-t pt-4">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-muted-foreground">Tổng thanh toán</span>
@@ -171,7 +250,8 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -195,10 +275,8 @@ export function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-foreground">{booking.storage.name}</h3>
-                          <Badge
-                            variant={booking.status === "confirmed" ? "default" : "secondary"}
-                          >
-                            {booking.status === "confirmed" ? "Đang hoạt động" : "Đã kết thúc"}
+                          <Badge className={getStatusLabel(booking.status).className}>
+                            {getStatusLabel(booking.status).text}
                           </Badge>
                         </div>
                         <div className="space-y-1 text-sm text-muted-foreground">

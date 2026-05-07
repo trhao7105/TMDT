@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Dict, Any
 from ..database import get_db
-from ..models.all_models import StorageSizes, ServiceTypes, DurationOptions, ProtectionPlans, AddonServices
+from ..models.all_models import StorageSizes, ServiceTypes, DurationOptions, ProtectionPlans, AddonServices, StorageUnits
 
 router = APIRouter(
     prefix="/api/services",
@@ -12,6 +13,14 @@ router = APIRouter(
 @router.get("/sizes")
 def get_storage_sizes(db: Session = Depends(get_db)):
     sizes = db.query(StorageSizes, ServiceTypes).join(ServiceTypes).filter(StorageSizes.status == 'active').all()
+    
+    # Count available units per size
+    available_counts = dict(
+        db.query(StorageUnits.size_id, func.count(StorageUnits.unit_id))
+        .filter(StorageUnits.status == 'available')
+        .group_by(StorageUnits.size_id)
+        .all()
+    )
     
     package_storages = []
     self_storages = []
@@ -42,7 +51,8 @@ def get_storage_sizes(db: Session = Depends(get_db)):
             "description": size.description or "",
             "price": float(size.base_price),
             "features": features,
-            "popular": size.size_code in ['S', '3M3']
+            "popular": size.size_code in ['S', '3M3'],
+            "availableUnits": available_counts.get(size.size_id, 0)
         }
         
         if service.service_code == 'FULL_SERVICE':

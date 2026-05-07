@@ -59,7 +59,12 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user_id": user.user_id,
+        "full_name": user.full_name
+    }
 
 @router.get("/verify-email")
 def verify_email(token: str, db: Session = Depends(get_db)):

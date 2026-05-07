@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import api from "../../api/axios";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -41,10 +42,14 @@ export function LoginPage() {
       localStorage.setItem('access_token', response.data.access_token);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userEmail", formData.email);
+      localStorage.setItem("userId", response.data.user_id.toString());
+      localStorage.setItem("userName", response.data.full_name);
       toast.success("Đăng nhập thành công!");
       
+      // Redirect về trang muốn vào trước đó, hoặc về trang chủ
+      const redirectTo = searchParams.get("redirect") || "/";
       setTimeout(() => {
-        navigate("/");
+        navigate(redirectTo);
       }, 500);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Sai tài khoản hoặc mật khẩu.');

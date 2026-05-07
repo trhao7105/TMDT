@@ -9,7 +9,7 @@ async def send_verification_email(email: str, token: str):
     print("\n" + "=" * 60)
     print("MOCK EMAIL SENDER ACTIVATED")
     print(f"TO: {email}")
-    print(f"SUBJECT: Vui lòng xác thực tài khoản iClocker của bạn")
+    print(f"SUBJECT: Vui lòng xác thực tài khoản iLocker của bạn")
     print(f"Bấm vào link sau để kích hoạt:\n-> {verification_link} <-")
     print("=" * 60 + "\n")
     

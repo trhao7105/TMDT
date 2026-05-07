@@ -7,6 +7,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { SupportPage } from "./pages/SupportPage";
 
 export const router = createBrowserRouter([
   {
@@ -15,15 +17,27 @@ export const router = createBrowserRouter([
   },
   {
     path: "/storage",
-    Component: StorageSelectionPage,
+    element: (
+      <ProtectedRoute>
+        <StorageSelectionPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/services",
-    Component: ServicesPage,
+    element: (
+      <ProtectedRoute>
+        <ServicesPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/checkout",
-    Component: CheckoutPage,
+    element: (
+      <ProtectedRoute>
+        <CheckoutPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/login",
@@ -35,7 +49,19 @@ export const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    Component: DashboardPage,
+    element: (
+      <ProtectedRoute>
+        <DashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/support",
+    element: (
+      <ProtectedRoute>
+        <SupportPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "*",

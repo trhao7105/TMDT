@@ -17,6 +17,7 @@ interface StorageSize {
   price: number;
   features: string[];
   popular?: boolean;
+  availableUnits: number;
 }
 
 export function StorageSelectionPage() {
@@ -166,21 +167,41 @@ export function StorageSelectionPage() {
               Đang tải danh sách kho...
             </div>
           ) : (
-            currentStorages.map((storage) => (
+            currentStorages.map((storage) => {
+              const isOutOfStock = storage.availableUnits === 0;
+              const isLowStock = storage.availableUnits > 0 && storage.availableUnits <= 5;
+              return (
               <Card
                 key={storage.id}
-                className={`relative p-6 cursor-pointer transition-all hover:shadow-lg w-full max-w-[320px] flex-1 min-w-[280px] ${
-                  selectedSize === storage.id
-                    ? "border-2 border-primary shadow-lg"
-                    : "border hover:border-primary/50"
+                className={`relative p-6 transition-all w-full max-w-[320px] flex-1 min-w-[280px] ${
+                  isOutOfStock
+                    ? "opacity-60 cursor-not-allowed border border-muted"
+                    : `cursor-pointer hover:shadow-lg ${
+                        selectedSize === storage.id
+                          ? "border-2 border-primary shadow-lg"
+                          : "border hover:border-primary/50"
+                      }`
                 }`}
-                onClick={() => setSelectedSize(storage.id)}
+                onClick={() => !isOutOfStock && setSelectedSize(storage.id)}
               >
-                {storage.popular && (
+                {storage.popular && !isOutOfStock && (
                   <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
                     Phổ biến nhất
                   </Badge>
                 )}
+  
+                {/* Availability badge */}
+                <div className={`absolute top-3 right-3 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  isOutOfStock
+                    ? "bg-red-100 text-red-600"
+                    : isLowStock
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-green-100 text-green-700"
+                }`}>
+                  {isOutOfStock
+                    ? "Hết chỗ"
+                    : `Còn ${storage.availableUnits} kho`}
+                </div>
   
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-3">
@@ -219,7 +240,8 @@ export function StorageSelectionPage() {
                   </div>
                 )}
               </Card>
-            ))
+              );
+            })
           )}
         </div>
 
