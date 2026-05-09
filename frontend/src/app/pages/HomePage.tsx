@@ -12,10 +12,35 @@ import {
   Thermometer,
   ArrowRight,
   Check,
+  Building2,
+  Users,
+  Award,
+  Zap,
+  ShieldCheck,
 } from "lucide-react";
+import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { useState, useEffect } from "react";
+import api from "../../api/axios";
 
 export function HomePage() {
+  const [locations, setLocations] = useState<any[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await api.get('/services/locations');
+        setLocations(response.data);
+      } catch (error) {
+        console.error("Failed to fetch locations", error);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    };
+    fetchLocations();
+  }, []);
+
   const features = [
     {
       icon: Shield,
@@ -54,29 +79,29 @@ export function HomePage() {
       name: "XXS - Mini",
       dimension: "2m³",
       description: "Phù hợp cho đồ cá nhân, hồ sơ",
-      price: "495.000đ",
-      period: "/tháng",
+      price: "16.500đ",
+      period: "/ngày",
     },
     {
       name: "XS - Nhỏ",
       dimension: "3m³",
       description: "Tủ quần áo, hộp đựng đồ",
-      price: "695.000đ",
-      period: "/tháng",
+      price: "23.000đ",
+      period: "/ngày",
     },
     {
       name: "S - Vừa",
       dimension: "5m³",
       description: "Đồ đạc phòng ngủ, xe đạp",
-      price: "1.195.000đ",
-      period: "/tháng",
+      price: "40.000đ",
+      period: "/ngày",
     },
     {
       name: "M - Lớn",
       dimension: "8m³",
       description: "Nội thất 1-2 người",
-      price: "1.845.000đ",
-      period: "/tháng",
+      price: "61.000đ",
+      period: "/ngày",
     },
   ];
 
@@ -188,6 +213,121 @@ export function HomePage() {
           </div>
         </div>
       </section>
+  
+      {/* Locations Section */}
+      <section className="py-20 bg-blue-50/50">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl md:text-4xl mb-4 text-foreground">
+                Hệ thống chi nhánh rộng khắp
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Tìm kiếm kho lưu trữ gần bạn nhất với mạng lưới 15+ chi nhánh tại các khu vực trọng điểm
+              </p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link to="/storage">Xem tất cả địa điểm</Link>
+            </Button>
+          </div>
+
+          {isLoadingLocations ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 rounded-xl bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {locations.slice(0, 6).map((location) => (
+                <Card key={location.id} className="p-6 hover:shadow-md transition-all border-none bg-white">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Building2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg text-foreground mb-1">{location.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3 flex items-start gap-1">
+                        <MapPin className="h-3 w-3 mt-1 shrink-0" />
+                        {location.address}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="font-normal">
+                          {location.district}
+                        </Badge>
+                        <Badge variant="outline" className="font-normal">
+                          {location.is247 ? "Mở cửa 24/7" : "Giờ hành chính"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Detailed Services Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="p-6 border-blue-100 bg-blue-50/30">
+                  <Zap className="h-8 w-8 text-primary mb-4" />
+                  <h3 className="text-xl mb-2">Lưu trữ trọn gói</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Chúng tôi đến tận nhà đóng gói, vận chuyển và lưu trữ đồ đạc cho bạn. Phù hợp cho người bận rộn.
+                  </p>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Miễn phí thùng carton</li>
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Đội ngũ vận chuyển chuyên nghiệp</li>
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-primary" /> Quản lý qua app</li>
+                  </ul>
+                </Card>
+                <Card className="p-6 border-green-100 bg-green-50/30">
+                  <ShieldCheck className="h-8 w-8 text-green-600 mb-4" />
+                  <h3 className="text-xl mb-2">Tủ tự quản</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Bạn toàn quyền sở hữu chìa khóa và truy cập kho bất cứ lúc nào. Phù hợp lưu trữ hàng hóa kinh doanh.
+                  </p>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Truy cập 24/7</li>
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Tự do sắp xếp</li>
+                    <li className="flex items-center gap-2"><Check className="h-3 w-3 text-green-600" /> Hệ thống bảo vệ 3 lớp</li>
+                  </ul>
+                </Card>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <h2 className="text-3xl md:text-4xl mb-6 text-foreground">
+                Giải pháp phù hợp với phong cách sống của bạn
+              </h2>
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Award className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Tiêu chuẩn quốc tế</h4>
+                    <p className="text-muted-foreground">Hệ thống kho bãi được thiết kế theo tiêu chuẩn lưu trữ an toàn của Châu Âu.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Hỗ trợ tận tâm</h4>
+                    <p className="text-muted-foreground">Đội ngũ CSKH luôn sẵn sàng giải đáp thắc mắc và hỗ trợ bạn 24/7.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Storage Sizes Section */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-white">
@@ -213,6 +353,7 @@ export function HomePage() {
                     {size.description}
                   </p>
                   <div className="text-xl text-foreground mb-1">
+                    <span className="text-sm text-muted-foreground mr-1">Chỉ từ</span>
                     {size.price}
                     <span className="text-sm text-muted-foreground">{size.period}</span>
                   </div>

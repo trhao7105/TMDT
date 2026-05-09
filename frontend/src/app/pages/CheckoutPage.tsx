@@ -8,22 +8,28 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { ArrowLeft, CreditCard, Building2, Smartphone, CheckCircle } from "lucide-react";
+import { ArrowLeft, CreditCard, Building2, Smartphone, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
   const [booking, setBooking] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState("card");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [sepayData, setSepayData] = useState<any>(null);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     phone: "",
     address: "",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvv: "",
   });
 
   useEffect(() => {
@@ -32,7 +38,13 @@ export function CheckoutPage() {
       navigate("/storage");
       return;
     }
-    setBooking(JSON.parse(savedBooking));
+    const parsedBooking = JSON.parse(savedBooking);
+    setBooking(parsedBooking);
+    
+    // Auto-fill address if transport address was provided
+    if (parsedBooking.transportAddress) {
+      setFormData(prev => ({ ...prev, address: parsedBooking.transportAddress }));
+    }
   }, [navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,32 +60,35 @@ export function CheckoutPage() {
       return;
     }
 
-    if (paymentMethod === "card" && (!formData.cardNumber || !formData.cardExpiry || !formData.cardCvv)) {
-      toast.error("Vui lòng điền đầy đủ thông tin thẻ");
-      return;
-    }
-
     setIsProcessing(true);
 
     try {
       const payload = {
         storage_id: booking.storage.id,
+        location_id: booking.location.id,
         service_type: booking.serviceType || 'package',
         duration_id: booking.duration?.id || 'duration-1',
         protection_plan_id: booking.protectionPlan?.id || 'protection-basic',
         additional_services: booking.additionalServices || [],
-        total_price: booking.pricing.totalPrice
+        total_price: booking.pricing.totalPrice,
+        payment_method: paymentMethod
       };
 
-      const response = await api.post('/orders/checkout', payload);
-      
-      setIsProcessing(false);
-      localStorage.removeItem("booking");
-      toast.success("Đặt kho thành công!");
-      
-      setTimeout(() => {
+      const response = await api.post("/orders/checkout", payload);
+
+      if (response.data.checkout_url) {
+        // Stripe Redirect
+        window.location.href = response.data.checkout_url;
+      } else if (response.data.qr_url) {
+        // SePay QR Mode
+        setSepayData(response.data);
+        setIsQRModalOpen(true);
+        setIsProcessing(false);
+      } else {
+        toast.success("Đã đặt kho thành công!");
+        localStorage.removeItem("booking");
         navigate("/dashboard");
-      }, 1000);
+      }
     } catch (error) {
       setIsProcessing(false);
       toast.error("Có lỗi xảy ra khi thanh toán");
@@ -159,106 +174,42 @@ export function CheckoutPage() {
 
               <Card className="p-6">
                 <h2 className="mb-6 text-foreground">Phương thức thanh toán</h2>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:border-primary transition-colors">
-                      <RadioGroupItem value="card" id="card" />
-                      <Label htmlFor="card" className="flex items-center gap-3 cursor-pointer flex-1">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        <div>
-                          <div>Thẻ tín dụng / Thẻ ghi nợ</div>
-                          <div className="text-sm text-muted-foreground">Visa, Mastercard, JCB</div>
-                        </div>
-                      </Label>
-                    </div>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-4">
+                  <div className={`flex items-center space-x-3 rounded-xl border p-4 cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-primary/50'}`}>
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card" className="flex items-center gap-3 cursor-pointer flex-1">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">Thẻ quốc tế (Stripe)</div>
+                        <div className="text-xs text-muted-foreground">Visa, Mastercard, JCB...</div>
+                      </div>
+                    </Label>
+                  </div>
 
-                    <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:border-primary transition-colors">
-                      <RadioGroupItem value="bank" id="bank" />
-                      <Label htmlFor="bank" className="flex items-center gap-3 cursor-pointer flex-1">
-                        <Building2 className="h-5 w-5 text-primary" />
-                        <div>
-                          <div>Chuyển khoản ngân hàng</div>
-                          <div className="text-sm text-muted-foreground">Chuyển khoản qua Internet Banking</div>
-                        </div>
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:border-primary transition-colors">
-                      <RadioGroupItem value="momo" id="momo" />
-                      <Label htmlFor="momo" className="flex items-center gap-3 cursor-pointer flex-1">
-                        <Smartphone className="h-5 w-5 text-primary" />
-                        <div>
-                          <div>Ví điện tử</div>
-                          <div className="text-sm text-muted-foreground">MoMo, ZaloPay, VNPay</div>
-                        </div>
-                      </Label>
-                    </div>
+                  <div className={`flex items-center space-x-3 rounded-xl border p-4 cursor-pointer transition-all ${paymentMethod === 'sepay' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:border-primary/50'}`}>
+                    <RadioGroupItem value="sepay" id="sepay" />
+                    <Label htmlFor="sepay" className="flex items-center gap-3 cursor-pointer flex-1">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-semibold">Chuyển khoản Ngân hàng (SePay)</div>
+                        <div className="text-xs text-muted-foreground">Quét mã VietQR, xác nhận tự động</div>
+                      </div>
+                    </Label>
                   </div>
                 </RadioGroup>
 
-                {paymentMethod === "card" && (
-                  <div className="mt-6 space-y-4 pt-6 border-t">
-                    <div>
-                      <Label htmlFor="cardNumber">Số thẻ *</Label>
-                      <Input
-                        id="cardNumber"
-                        name="cardNumber"
-                        value={formData.cardNumber}
-                        onChange={handleInputChange}
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        required={paymentMethod === "card"}
-                      />
+                <div className="mt-6 pt-6 border-t">
+                  {paymentMethod === 'card' ? (
+                    <div className="flex items-center gap-4 grayscale opacity-60">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-6" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="cardExpiry">Ngày hết hạn *</Label>
-                        <Input
-                          id="cardExpiry"
-                          name="cardExpiry"
-                          value={formData.cardExpiry}
-                          onChange={handleInputChange}
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          required={paymentMethod === "card"}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cardCvv">CVV *</Label>
-                        <Input
-                          id="cardCvv"
-                          name="cardCvv"
-                          type="password"
-                          value={formData.cardCvv}
-                          onChange={handleInputChange}
-                          placeholder="123"
-                          maxLength={3}
-                          required={paymentMethod === "card"}
-                        />
-                      </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="text-xs text-muted-foreground">Đối tác thanh toán:</div>
+                      <div className="font-bold text-blue-600">SePay</div>
                     </div>
-                  </div>
-                )}
-
-                {paymentMethod === "bank" && (
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-foreground mb-2">Thông tin chuyển khoản:</p>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>Ngân hàng: <span className="text-foreground">Vietcombank</span></p>
-                      <p>Số tài khoản: <span className="text-foreground">1234567890</span></p>
-                      <p>Chủ tài khoản: <span className="text-foreground">CÔNG TY ILOCKER</span></p>
-                      <p>Nội dung: <span className="text-foreground">THANHTOAN [Mã đơn hàng]</span></p>
-                    </div>
-                  </div>
-                )}
-
-                {paymentMethod === "momo" && (
-                  <div className="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
-                    <p className="text-sm text-foreground">
-                      Bạn sẽ được chuyển đến trang thanh toán ví điện tử sau khi xác nhận đơn hàng.
-                    </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </Card>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -296,6 +247,12 @@ export function CheckoutPage() {
               <h2 className="mb-6 text-foreground">Tóm tắt đơn hàng</h2>
 
               <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Khu vực</div>
+                  <div className="text-foreground">{booking.location?.name}</div>
+                  <div className="text-sm text-muted-foreground">{booking.location?.address}</div>
+                </div>
+
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Kho đã chọn</div>
                   <div className="text-foreground">{booking.storage.name}</div>
@@ -377,6 +334,68 @@ export function CheckoutPage() {
       </div>
 
       <Footer />
+
+      {/* SePay QR Modal */}
+      <Dialog open={isQRModalOpen} onOpenChange={setIsQRModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Quét mã VietQR để thanh toán</DialogTitle>
+            <DialogDescription className="text-center">
+              Vui lòng sử dụng ứng dụng Ngân hàng để quét mã dưới đây
+            </DialogDescription>
+          </DialogHeader>
+          
+          {sepayData && (
+            <div className="space-y-6 py-4">
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="bg-white p-2 rounded-xl shadow-md border-4 border-primary/10">
+                  <img src={sepayData.qr_url} alt="VietQR" className="w-64 h-64 object-contain" />
+                </div>
+                <div className="text-center bg-blue-50 p-4 rounded-lg w-full">
+                  <p className="text-sm text-muted-foreground mb-1">Số tiền thanh toán</p>
+                  <p className="text-2xl font-bold text-primary">{sepayData.amount.toLocaleString("vi-VN")}đ</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm border-b pb-2">
+                  <span className="text-muted-foreground">Ngân hàng</span>
+                  <span className="font-semibold">{sepayData.bank_name}</span>
+                </div>
+                <div className="flex justify-between text-sm border-b pb-2">
+                  <span className="text-muted-foreground">Số tài khoản</span>
+                  <span className="font-semibold">{sepayData.account_no}</span>
+                </div>
+                <div className="flex justify-between text-sm border-b pb-2">
+                  <span className="text-muted-foreground">Chủ tài khoản</span>
+                  <span className="font-semibold uppercase">{sepayData.account_name}</span>
+                </div>
+                <div className="flex justify-between text-sm border-b pb-2">
+                  <span className="text-muted-foreground">Nội dung chuyển khoản</span>
+                  <span className="font-bold text-red-600">{sepayData.description}</span>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex gap-3">
+                <Smartphone className="h-5 w-5 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-800 italic">
+                  Hệ thống sẽ tự động xác nhận đơn hàng sau khi nhận được tiền (thường mất 1-2 phút). Vui lòng không tắt cửa sổ này.
+                </p>
+              </div>
+
+              <Button 
+                className="w-full" 
+                onClick={() => {
+                  setIsQRModalOpen(false);
+                  navigate("/dashboard");
+                }}
+              >
+                Tôi đã chuyển khoản
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,24 +3,40 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Any
 from ..database import get_db
-from ..models.all_models import StorageSizes, ServiceTypes, DurationOptions, ProtectionPlans, AddonServices, StorageUnits
+from ..models.all_models import StorageSizes, ServiceTypes, DurationOptions, ProtectionPlans, AddonServices, StorageUnits, Locations
 
 router = APIRouter(
     prefix="/api/services",
     tags=["Services"]
 )
 
+@router.get("/locations")
+def get_locations(db: Session = Depends(get_db)):
+    locations = db.query(Locations).filter(Locations.status == 'active').all()
+    return [
+        {
+            "id": str(l.location_id),
+            "name": l.location_name,
+            "address": l.address,
+            "city": l.city,
+            "district": l.district,
+            "is247": l.is_24_7,
+            "latitude": float(l.latitude) if l.latitude else None,
+            "longitude": float(l.longitude) if l.longitude else None
+        }
+        for l in locations
+    ]
+
 @router.get("/sizes")
-def get_storage_sizes(db: Session = Depends(get_db)):
+def get_storage_sizes(location_id: int = None, db: Session = Depends(get_db)):
     sizes = db.query(StorageSizes, ServiceTypes).join(ServiceTypes).filter(StorageSizes.status == 'active').all()
     
     # Count available units per size
-    available_counts = dict(
-        db.query(StorageUnits.size_id, func.count(StorageUnits.unit_id))
-        .filter(StorageUnits.status == 'available')
-        .group_by(StorageUnits.size_id)
-        .all()
-    )
+    query = db.query(StorageUnits.size_id, func.count(StorageUnits.unit_id)).filter(StorageUnits.status == 'available')
+    if location_id:
+        query = query.filter(StorageUnits.location_id == location_id)
+        
+    available_counts = dict(query.group_by(StorageUnits.size_id).all())
     
     package_storages = []
     self_storages = []

@@ -17,7 +17,22 @@ import {
   FileText,
   Plus,
   AlertTriangle,
+  Info,
+  ShieldCheck,
+  Zap,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { toast } from "sonner";
 
 function getRemainingTime(endTime: string | null): {
   label: string;
@@ -48,6 +63,12 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const [userBookings, setUserBookings] = useState<any[]>([]);
   const [userName, setUserName] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isExtendOpen, setIsExtendOpen] = useState(false);
+  const [durationOptions, setDurationOptions] = useState<any[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<string>("");
+  const [isExtending, setIsExtending] = useState(false);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -69,8 +90,48 @@ export function DashboardPage() {
       }
     };
     
+    const fetchOptions = async () => {
+      try {
+        const response = await api.get('/services/options');
+        setDurationOptions(response.data.durationOptions);
+        if (response.data.durationOptions.length > 0) {
+          setSelectedDuration(response.data.durationOptions[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch options", error);
+      }
+    };
+
     fetchBookings();
+    fetchOptions();
   }, [navigate]);
+
+  const handleExtend = async () => {
+    if (!selectedOrder || !selectedDuration) return;
+    
+    setIsExtending(true);
+    try {
+      const duration = durationOptions.find(d => d.id === selectedDuration);
+      const extraPrice = (selectedOrder.finalTotal / parseFloat(selectedOrder.duration.value || 1)) * (duration?.value || 1);
+      
+      await api.post(`/orders/${selectedOrder.id}/extend`, {
+        duration_id: selectedDuration,
+        extra_price: extraPrice
+      });
+      
+      toast.success("Gia hạn thành công!");
+      setIsExtendOpen(false);
+      setIsDetailOpen(false);
+      
+      // Refresh bookings
+      const response = await api.get('/orders/my-orders');
+      setUserBookings(response.data);
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi gia hạn");
+    } finally {
+      setIsExtending(false);
+    }
+  };
 
   const activeBookings = userBookings.filter((b) => b.status === "confirmed");
   const totalSpent = userBookings.reduce((sum, b) => sum + (b.finalTotal || 0), 0);
@@ -241,13 +302,17 @@ export function DashboardPage() {
                       </div>
                     )}
 
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Tổng thanh toán</span>
-                        <span className="text-xl text-primary">
-                          {booking.finalTotal?.toLocaleString("vi-VN")}đ
-                        </span>
-                      </div>
+                    <div className="border-t pt-4 flex gap-2">
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          setSelectedOrder(booking);
+                          setIsDetailOpen(true);
+                        }}
+                      >
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Chi tiết & Mở tủ
+                      </Button>
                     </div>
                   </Card>
                   );
@@ -255,6 +320,131 @@ export function DashboardPage() {
               </div>
             )}
           </TabsContent>
+
+          {/* Details Dialog */}
+          <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Chi tiết kho lưu trữ</DialogTitle>
+                <DialogDescription>
+                  Thông tin chi tiết và mã truy cập kho của bạn
+                </DialogDescription>
+              </DialogHeader>
+              
+              {selectedOrder && (
+                <div className="space-y-6 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase font-bold">Mã tủ</p>
+                      <p className="text-lg font-semibold text-primary">{selectedOrder.storage.unit_code}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase font-bold">Trạng thái</p>
+                      <Badge className="bg-green-500">Đang hoạt động</Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase font-bold">Địa điểm</p>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-primary shrink-0 mt-1" />
+                      <div>
+                        <p className="font-medium">{selectedOrder.location.name}</p>
+                        <p className="text-sm text-muted-foreground">{selectedOrder.location.address}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/50 p-6 rounded-xl flex flex-col items-center justify-center space-y-4 border border-dashed border-primary/30">
+                    <p className="text-sm font-medium">Mã QR truy cập</p>
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <QrCode className="h-32 w-32 text-foreground" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Mã PIN dự phòng</p>
+                      <p className="text-2xl font-mono tracking-widest font-bold text-primary">
+                        {selectedOrder.storage.access_pin.replace('PIN-', '')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between h-12"
+                      onClick={() => setIsExtendOpen(true)}
+                    >
+                      <div className="flex items-center">
+                        <Clock className="mr-2 h-5 w-5 text-primary" />
+                        <span>Gia hạn thời gian thuê</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" className="w-full text-muted-foreground">
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Báo cáo sự cố
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Extend Dialog */}
+          <Dialog open={isExtendOpen} onOpenChange={setIsExtendOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Gia hạn thuê kho</DialogTitle>
+                <DialogDescription>
+                  Chọn thời gian bạn muốn gia hạn thêm
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Chọn thời gian gia hạn</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {durationOptions.map((option) => (
+                      <div 
+                        key={option.id}
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedDuration === option.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedDuration(option.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Clock className={`h-5 w-5 ${selectedDuration === option.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span>{option.label}</span>
+                        </div>
+                        {option.popular && <Badge variant="secondary">Ưu đãi</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-primary/5 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Phí gia hạn ước tính:</span>
+                    <span className="text-lg font-bold text-primary">
+                      {selectedOrder && durationOptions.find(d => d.id === selectedDuration) 
+                        ? (selectedOrder.finalTotal * (durationOptions.find(d => d.id === selectedDuration)?.multiplier || 1) / (selectedOrder.duration.multiplier || 1)).toLocaleString("vi-VN")
+                        : "0"}đ
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsExtendOpen(false)}>Huỷ</Button>
+                <Button 
+                  onClick={handleExtend} 
+                  disabled={isExtending}
+                >
+                  {isExtending ? "Đang xử lý..." : "Xác nhận gia hạn"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <TabsContent value="history" className="space-y-6">
             {userBookings.length === 0 ? (
